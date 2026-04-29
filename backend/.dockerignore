@@ -1,0 +1,12 @@
+main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+.env
+.git
+.idea
+.vscode
