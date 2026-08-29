@@ -1,3 +1,4 @@
+
 services:
   db:
     image: postgres:16-alpine
@@ -5,36 +6,31 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5433:5432" # Changed from 5432 to 5433 to avoid conflict with your running postgres instance
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./db_data:/var/lib/postgresql/data
-    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
 
   backend:
-    build: 
-      context: ./backend
-    ports:
-      - "8080:8080"
+    env_file:
+      - .env
     environment:
+      - APP_PORT=8080
       - DB_HOST=db
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_SSLMODE=disable
-      - APP_PORT=${APP_PORT}
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGINS=http://localhost,http://localhost:5173
+      - DB_PORT=5432
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
-      - db
-    restart: always
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-    ports:
-      - "5173:80"
     depends_on:
       - backend
-    restart: always
+    restart: unless-stopped

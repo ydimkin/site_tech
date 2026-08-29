@@ -1,0 +1,41 @@
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: site_tech-backend:prod
+    container_name: site_tech-backend-prod
+
+    expose:
+      - "8080"
+    networks:
+      - default
+      - web
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_DOMAIN=${DOMAIN}
+        - VITE_SESSION_LIFETIME_DAYS=${SESSION_LIFETIME_DAYS}
+        - VITE_API_URL=/api/v1
+    image: site_tech-frontend:prod
+    container_name: site_tech-frontend-prod
+    expose:
+      - "80"
+    networks:
+      - default
+      - web
+
+  db:
+    container_name: site_tech-db-prod
+    networks:
+      - default
+
+networks:
+  default:
+  web:
+    external: true
+    name: web

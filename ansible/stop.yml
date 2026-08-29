@@ -1,0 +1,41 @@
+---
+
+- name: Остановить site_tech ({{ env | default('dev') }})
+  hosts: all
+  gather_facts: false
+  vars:
+    env: dev
+    remote_project_dir: "{{ '/root/site_tech' if inventory_hostname != 'localhost' else (playbook_dir | dirname) }}"
+    project_dir: "{{ remote_project_dir }}"
+    env_file: "{{ project_dir }}/.env"
+    compose_files:
+      - "{{ project_dir }}/docker-compose.yml"
+      - "{{ project_dir }}/docker-compose.{{ env }}.yml"
+    project_name: "site_tech_{{ env }}"
+    purge: false
+
+  pre_tasks:
+    - name: Проверить, что профиль валиден
+      ansible.builtin.assert:
+        that:
+          - env in ['dev', 'prod', 'deploy']
+        fail_msg: "env должен быть 'dev', 'prod' или 'deploy', получено: {{ env }}"
+
+  tasks:
+    - name: Остановить контейнеры
+      ansible.builtin.command:
+        cmd: >
+          docker compose
+          --project-name {{ project_name }}
+          --env-file {{ env_file }}
+          {% for f in compose_files %}-f {{ f }} {% endfor %}
+          down
+          {% if purge | bool %}--volumes{% endif %}
+        chdir: "{{ project_dir }}"
+      register: down_out
+      changed_when: "'Removed' in down_out.stderr or 'Stopped' in down_out.stderr"
+
+
+    - name: Готово
+      ansible.builtin.debug:
+        msg: "✓ site_tech ({{ env }}) остановлен"

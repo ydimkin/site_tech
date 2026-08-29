@@ -14,7 +14,7 @@ export const bookingsApi = {
   cancel: (id: number) =>
     client.delete(`/bookings/${id}`),
 
-  // Admin
+  
   adminList: (status?: string, page = 1, pageSize = 20) =>
     client.get<PaginatedResponse<Booking>>('/admin/bookings', {
       params: { status, page, page_size: pageSize },

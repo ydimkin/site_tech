@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { contactApi } from '@/api/misc'
 import toast from 'react-hot-toast'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
+import { FadeIn, Stagger, StaggerItem } from '@/components/common/Animated'
 
 const schema = z.object({
   name: z.string().min(2, 'Минимум 2 символа'),
@@ -32,41 +33,49 @@ export default function ContactPage() {
 
   return (
     <div className="container-page py-12">
-      <h1 className="section-title mb-2">Контакты</h1>
-      <p className="section-subtitle mb-12">Свяжитесь с нами любым удобным способом</p>
+      <FadeIn>
+        <h1 className="section-title mb-2">Контакты</h1>
+        <p className="section-subtitle mb-12">Свяжитесь с нами любым удобным способом</p>
+      </FadeIn>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {/* Info */}
-        <div className="space-y-6">
+        <Stagger className="space-y-6" whileInView={false}>
           {[
             { icon: MapPin, title: 'Адрес', text: '601501, Россия, Владимирская область г. Гусь-Хрустальный ул. Писарева д. 17' },
             { icon: Phone, title: 'Телефон', text: '+7 (996) 442-96-24' },
             { icon: Mail, title: 'Email', text: 'test@mail.ru' },
             { icon: Clock, title: 'Режим работы', text: 'Пн–Пт: 8:00–18:00\nСб: 8:00–14:00' },
           ].map(({ icon: Icon, title, text }) => (
-            <div key={title} className="card p-5 flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary-gradient flex items-center justify-center flex-shrink-0">
-                <Icon className="w-5 h-5 text-white" />
+            <StaggerItem key={title} direction="left">
+              <div className="card p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary-gradient flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-5 h-5 text-content-main" />
+                </div>
+                <div>
+                  <h3 className="text-content-main font-semibold text-sm mb-1">{title}</h3>
+                  <p className="text-content-muted text-sm whitespace-pre-line">{text}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-white font-semibold text-sm mb-1">{title}</h3>
-                <p className="text-slate-400 text-sm whitespace-pre-line">{text}</p>
-              </div>
-            </div>
+            </StaggerItem>
           ))}
 
-          {/* Map placeholder */}
-          <div className="card h-48 flex items-center justify-center">
-            <div className="text-center text-slate-500">
-              <MapPin className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-              <p className="text-sm">Карта</p>
+          <StaggerItem direction="left">
+            <div className="card overflow-hidden h-64">
+              <iframe
+                src="https://yandex.ru/map-widget/v1/?pt=40.654636,55.617092&z=16&l=map"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                allowFullScreen
+                title="Карта — ул. Писарева д. 17, г. Гусь-Хрустальный"
+              />
             </div>
-          </div>
-        </div>
+          </StaggerItem>
+        </Stagger>
 
-        {/* Form */}
-        <div className="card p-6">
-          <h2 className="text-white font-bold text-xl mb-5">Написать нам</h2>
+        <FadeIn direction="right" delay={0.1}>
+          <div className="card p-6">
+          <h2 className="text-content-main font-bold text-xl mb-5">Написать нам</h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -97,7 +106,8 @@ export default function ContactPage() {
               {isSubmitting ? 'Отправка...' : 'Отправить сообщение'}
             </button>
           </form>
-        </div>
+          </div>
+        </FadeIn>
       </div>
     </div>
   )

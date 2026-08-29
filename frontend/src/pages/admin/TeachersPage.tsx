@@ -3,9 +3,10 @@ import { teachersApi } from '@/api/misc'
 import type { Teacher } from '@/types'
 import toast from 'react-hot-toast'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import Modal from '@/components/common/Modal'
 
-type FormState = { name: string; position: string; description: string; photo_url: string; experience: string; subjects: string }
-const emptyForm: FormState = { name: '', position: '', description: '', photo_url: '', experience: '', subjects: '' }
+type FormState = { name: string; position: string; description: string; photo_url: string; experience: string; subjects: string; email?: string; password?: string }
+const emptyForm: FormState = { name: '', position: '', description: '', photo_url: '', experience: '', subjects: '', email: '', password: '' }
 
 export default function AdminTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([])
@@ -40,9 +41,9 @@ export default function AdminTeachersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white font-display">Педагоги</h1>
-        <button className="btn btn-primary" onClick={() => { setEditing(null); setForm(emptyForm); setModal(true) }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-2xl font-bold text-content-main font-display">Педагоги</h1>
+        <button className="btn btn-primary w-full sm:w-auto" onClick={() => { setEditing(null); setForm(emptyForm); setModal(true) }}>
           <Plus className="w-4 h-4" /> Добавить
         </button>
       </div>
@@ -51,15 +52,15 @@ export default function AdminTeachersPage() {
         {teachers.map((t) => (
           <div key={t.id} className="card p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-xl bg-primary-gradient flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden">
+              <div className="w-12 h-12 rounded-xl bg-primary-gradient flex items-center justify-center text-content-main font-bold text-lg flex-shrink-0 overflow-hidden">
                 {t.photo_url ? <img src={t.photo_url} alt={t.name} className="w-full h-full object-cover" /> : t.name[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-white font-semibold truncate">{t.name}</h3>
+                <h3 className="text-content-main font-semibold truncate">{t.name}</h3>
                 <p className="text-primary-400 text-xs">{t.position}</p>
               </div>
             </div>
-            {t.subjects && <p className="text-slate-400 text-xs mb-3">{t.subjects}</p>}
+            {t.subjects && <p className="text-content-muted text-xs mb-3">{t.subjects}</p>}
             <div className="flex gap-2">
               <button className="btn btn-secondary flex-1 btn-sm" onClick={() => openEdit(t)}><Pencil className="w-3.5 h-3.5" /> Изменить</button>
               <button className="btn btn-danger btn-icon btn-sm" onClick={() => handleDelete(t.id)}><Trash2 className="w-3.5 h-3.5" /></button>
@@ -69,11 +70,10 @@ export default function AdminTeachersPage() {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setModal(false)} />
-          <div className="card relative w-full max-w-md p-6 z-10 animate-slide-up max-h-[90vh] overflow-y-auto">
+        <Modal onClose={() => setModal(false)}>
+          <div className="card relative w-full max-w-md p-4 sm:p-6 z-10 animate-slide-up max-h-[95dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between mb-5">
-              <h3 className="text-white font-bold text-lg">{editing ? 'Изменить педагога' : 'Новый педагог'}</h3>
+              <h3 className="text-content-main font-bold text-lg">{editing ? 'Изменить педагога' : 'Новый педагог'}</h3>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setModal(false)}><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-4">
@@ -91,6 +91,27 @@ export default function AdminTeachersPage() {
                     onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} />
                 </div>
               ))}
+              
+              {!editing && (
+                <>
+                  <div className="border-t border-surface-border pt-4 mt-4">
+                    <p className="text-sm text-content-muted mb-4">Данные для входа (необязательно)</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="label">Email</label>
+                        <input className="input" type="email" placeholder="teacher@site.com"
+                          value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="label">Пароль</label>
+                        <input className="input" type="password" placeholder="••••••••"
+                          value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="label">Описание</label>
                 <textarea className="input resize-none" rows={3} value={form.description}
@@ -102,7 +123,7 @@ export default function AdminTeachersPage() {
               <button className="btn btn-primary flex-1" onClick={handleSubmit}>{editing ? 'Сохранить' : 'Создать'}</button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

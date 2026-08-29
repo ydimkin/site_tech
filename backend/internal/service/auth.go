@@ -64,7 +64,7 @@ func (s *AuthService) GetByID(id uint) (*models.User, error) {
 	return &user, nil
 }
 
-func (s *AuthService) UpdateProfile(id uint, name, phone string, childAge *int) (*models.User, error) {
+func (s *AuthService) UpdateProfile(id uint, name, phone string, childAge *int, avatarURL string) (*models.User, error) {
 	var user models.User
 	if err := s.db.First(&user, id).Error; err != nil {
 		return nil, err
@@ -76,6 +76,21 @@ func (s *AuthService) UpdateProfile(id uint, name, phone string, childAge *int) 
 		user.Phone = phone
 	}
 	user.ChildAge = childAge
+	if avatarURL != "" {
+		user.AvatarURL = avatarURL
+	}
+	if err := s.db.Save(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (s *AuthService) DeleteAvatar(id uint) (*models.User, error) {
+	var user models.User
+	if err := s.db.First(&user, id).Error; err != nil {
+		return nil, err
+	}
+	user.AvatarURL = ""
 	if err := s.db.Save(&user).Error; err != nil {
 		return nil, err
 	}

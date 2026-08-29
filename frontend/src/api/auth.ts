@@ -24,6 +24,17 @@ export const authApi = {
   getMe: () =>
     client.get<{ success: boolean; data: User }>('/auth/me'),
 
-  updateMe: (data: Partial<Pick<User, 'name' | 'phone' | 'child_age'>>) =>
+  updateMe: (data: Partial<Pick<User, 'name' | 'phone' | 'child_age' | 'avatar_url'>>) =>
     client.put<{ success: boolean; data: User }>('/auth/me', data),
+
+  uploadAvatar: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return client.post<{ success: boolean; data: { url: string } }>('/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  deleteAvatar: () =>
+    client.delete<{ success: boolean; data: User }>('/auth/me/avatar'),
 }

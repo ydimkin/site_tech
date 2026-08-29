@@ -43,11 +43,12 @@ func (h *NewsHandler) GetByID(c *gin.Context) {
 }
 
 type createNewsInput struct {
-	Title       string `json:"title" binding:"required"`
-	Content     string `json:"content" binding:"required"`
-	Preview     string `json:"preview"`
-	ImageURL    string `json:"image_url"`
-	IsPublished bool   `json:"is_published"`
+	Title       string   `json:"title" binding:"required"`
+	Content     string   `json:"content" binding:"required"`
+	Preview     string   `json:"preview"`
+	ImageURL    string   `json:"image_url"`
+	Images      []string `json:"images"`
+	IsPublished bool     `json:"is_published"`
 }
 
 func (h *NewsHandler) Create(c *gin.Context) {
@@ -56,7 +57,7 @@ func (h *NewsHandler) Create(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	news, err := h.svc.Create(input.Title, input.Content, input.Preview, input.ImageURL, input.IsPublished)
+	news, err := h.svc.Create(input.Title, input.Content, input.Preview, input.ImageURL, input.Images, input.IsPublished)
 	if err != nil {
 		response.InternalError(c)
 		return
@@ -75,7 +76,7 @@ func (h *NewsHandler) Update(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	news, err := h.svc.Update(uint(id), input.Title, input.Content, input.Preview, input.ImageURL, input.IsPublished)
+	news, err := h.svc.Update(uint(id), input.Title, input.Content, input.Preview, input.ImageURL, input.Images, input.IsPublished)
 	if err != nil {
 		response.NotFound(c, "News not found")
 		return
@@ -96,7 +97,6 @@ func (h *NewsHandler) Delete(c *gin.Context) {
 	response.OKMessage(c, "News deleted")
 }
 
-// Teachers
 type TeacherHandler struct {
 	svc *service.TeacherService
 }
@@ -121,6 +121,8 @@ type createTeacherInput struct {
 	PhotoURL    string `json:"photo_url"`
 	Experience  int    `json:"experience"`
 	Subjects    string `json:"subjects"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
 }
 
 func (h *TeacherHandler) Create(c *gin.Context) {
@@ -129,7 +131,7 @@ func (h *TeacherHandler) Create(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	t, err := h.svc.Create(input.Name, input.Position, input.Description, input.PhotoURL, input.Experience, input.Subjects)
+	t, err := h.svc.Create(input.Name, input.Position, input.Description, input.PhotoURL, input.Experience, input.Subjects, input.Email, input.Password)
 	if err != nil {
 		response.InternalError(c)
 		return
@@ -161,7 +163,6 @@ func (h *TeacherHandler) Delete(c *gin.Context) {
 	response.OKMessage(c, "Teacher deleted")
 }
 
-// Categories
 type CategoryHandler struct {
 	svc *service.CategoryService
 }
@@ -223,7 +224,6 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 	response.OKMessage(c, "Category deleted")
 }
 
-// Contact
 type ContactHandler struct {
 	svc *service.ContactService
 }
@@ -272,7 +272,15 @@ func (h *ContactHandler) MarkRead(c *gin.Context) {
 	response.OKMessage(c, "Marked as read")
 }
 
-// Admin stats
+func (h *ContactHandler) Delete(c *gin.Context) {
+	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err := h.svc.Delete(uint(id)); err != nil {
+		response.NotFound(c, "Message not found")
+		return
+	}
+	response.OKMessage(c, "Message deleted")
+}
+
 type StatsHandler struct {
 	svc *service.StatsService
 }
@@ -290,7 +298,86 @@ func (h *StatsHandler) GetStats(c *gin.Context) {
 	response.OK(c, stats)
 }
 
-// Reviews
+type ScheduleHandler struct {
+	svc *service.ScheduleService
+}
+
+func NewScheduleHandler(svc *service.ScheduleService) *ScheduleHandler {
+	return &ScheduleHandler{svc: svc}
+}
+
+func (h *ScheduleHandler) List(c *gin.Context) {
+	schedules, err := h.svc.List()
+	if err != nil {
+		response.InternalError(c)
+		return
+	}
+	response.OK(c, schedules)
+}
+
+func (h *ScheduleHandler) AdminList(c *gin.Context) {
+	schedules, err := h.svc.AdminList()
+	if err != nil {
+		response.InternalError(c)
+		return
+	}
+	response.OK(c, schedules)
+}
+
+type createScheduleInput struct {
+	CourseID  uint   `json:"course_id" binding:"required"`
+	Weekday   string `json:"weekday" binding:"required"`
+	TimeStart string `json:"time_start" binding:"required"`
+	TimeEnd   string `json:"time_end" binding:"required"`
+	Capacity  int    `json:"capacity"`
+}
+
+func (h *ScheduleHandler) Create(c *gin.Context) {
+	var input createScheduleInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	sch, err := h.svc.Create(input.CourseID, input.Weekday, input.TimeStart, input.TimeEnd, input.Capacity)
+	if err != nil {
+		response.InternalError(c)
+		return
+	}
+	response.Created(c, sch)
+}
+
+func (h *ScheduleHandler) Update(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid ID")
+		return
+	}
+	var input createScheduleInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	sch, err := h.svc.Update(uint(id), input.CourseID, input.Weekday, input.TimeStart, input.TimeEnd, input.Capacity)
+	if err != nil {
+		response.NotFound(c, "Schedule not found")
+		return
+	}
+	response.OK(c, sch)
+}
+
+func (h *ScheduleHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid ID")
+		return
+	}
+	if err := h.svc.Delete(uint(id)); err != nil {
+		response.NotFound(c, "Schedule not found")
+		return
+	}
+	response.OKMessage(c, "Schedule deleted")
+}
+
 type ReviewHandler struct {
 	svc *service.ReviewService
 }
@@ -328,4 +415,54 @@ func (h *ReviewHandler) Create(c *gin.Context) {
 		return
 	}
 	response.Created(c, review)
+}
+
+type DocumentHandler struct {
+	svc *service.DocumentService
+}
+
+func NewDocumentHandler(svc *service.DocumentService) *DocumentHandler {
+	return &DocumentHandler{svc: svc}
+}
+
+func (h *DocumentHandler) List(c *gin.Context) {
+	docs, err := h.svc.List()
+	if err != nil {
+		response.InternalError(c)
+		return
+	}
+	response.OK(c, docs)
+}
+
+type createDocumentInput struct {
+	Title    string `json:"title" binding:"required"`
+	FileURL  string `json:"file_url" binding:"required"`
+	Category string `json:"category" binding:"required"`
+}
+
+func (h *DocumentHandler) Create(c *gin.Context) {
+	var input createDocumentInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	doc, err := h.svc.Create(input.Title, input.FileURL, input.Category)
+	if err != nil {
+		response.InternalError(c)
+		return
+	}
+	response.Created(c, doc)
+}
+
+func (h *DocumentHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		response.BadRequest(c, "Invalid ID")
+		return
+	}
+	if err := h.svc.Delete(uint(id)); err != nil {
+		response.NotFound(c, "Document not found")
+		return
+	}
+	response.OKMessage(c, "Document deleted")
 }

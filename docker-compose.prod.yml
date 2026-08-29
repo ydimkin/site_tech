@@ -1,0 +1,44 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: site_tech-backend:prod
+    container_name: site_tech-backend-prod
+    environment:
+      - APP_ENV=production
+    ports:
+      - "${PORT_BACKEND:-8080}:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_DOMAIN=${DOMAIN:-localhost}
+        - VITE_SESSION_LIFETIME_DAYS=${SESSION_LIFETIME_DAYS:-2}
+        - VITE_API_URL=/api/v1
+    image: site_tech-frontend:prod
+    container_name: site_tech-frontend-prod
+    ports:
+      - "${PORT_FRONTEND:-80}:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-http://localhost:80}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  db:
+    container_name: site_tech-db-prod
+    ports:
+      - "${PORT_DB:-5432}:5432"
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

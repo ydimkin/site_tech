@@ -1,4 +1,3 @@
-// ===== AUTH =====
 export interface User {
   id: number
   name: string
@@ -11,7 +10,7 @@ export interface User {
   created_at: string
 }
 
-// ===== CATEGORIES =====
+
 export interface Category {
   id: number
   name: string
@@ -19,7 +18,7 @@ export interface Category {
   color: string
 }
 
-// ===== TEACHERS =====
+
 export interface Teacher {
   id: number
   name: string
@@ -31,7 +30,7 @@ export interface Teacher {
   is_active: boolean
 }
 
-// ===== COURSES =====
+
 export interface Course {
   id: number
   title: string
@@ -51,10 +50,11 @@ export interface Course {
   groups?: Group[]
 }
 
-// ===== SCHEDULE & GROUPS =====
+
 export interface Schedule {
   id: number
   course_id: number
+  course?: Course
   weekday: string
   time_start: string
   time_end: string
@@ -74,7 +74,7 @@ export interface Group {
   is_active: boolean
 }
 
-// ===== BOOKINGS =====
+
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'waitlist'
 
 export interface Booking {
@@ -100,7 +100,7 @@ export interface CreateBookingInput {
   comment?: string
 }
 
-// ===== REVIEWS =====
+
 export interface Review {
   id: number
   user_id: number
@@ -111,28 +111,21 @@ export interface Review {
   created_at: string
 }
 
-// ===== NEWS =====
+
 export interface News {
   id: number
   title: string
   content: string
   preview: string
   image_url: string
+  images: string[]
   is_published: boolean
   published_at: string
   created_at: string
 }
 
-// ===== GALLERY =====
-export interface GalleryItem {
-  id: number
-  image_url: string
-  title: string
-  description: string
-  sort_order: number
-}
 
-// ===== DOCUMENT =====
+
 export interface Document {
   id: number
   title: string
@@ -140,7 +133,7 @@ export interface Document {
   category: string
 }
 
-// ===== CONTACT =====
+
 export interface ContactMessage {
   id: number
   name: string
@@ -152,7 +145,7 @@ export interface ContactMessage {
   created_at: string
 }
 
-// ===== API RESPONSES =====
+
 export interface ApiResponse<T = unknown> {
   success: boolean
   message?: string
@@ -168,7 +161,7 @@ export interface PaginatedResponse<T> {
   total_pages: number
 }
 
-// ===== FILTERS =====
+
 export interface CourseFilters {
   search?: string
   category_id?: number
@@ -179,7 +172,7 @@ export interface CourseFilters {
   page_size?: number
 }
 
-// ===== STATS =====
+
 export interface DashboardStats {
   total_courses: number
   total_students: number

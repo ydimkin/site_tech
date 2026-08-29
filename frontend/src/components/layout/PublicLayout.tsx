@@ -1,11 +1,16 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Menu, X, Rocket, ChevronRight } from 'lucide-react'
+import { Menu, X, ChevronRight, Sun, Moon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useThemeStore } from '@/store/themeStore'
 import clsx from 'clsx'
+import logoImg from '@/assets/img/logo.png'
+import InteractiveBackground from '@/components/common/InteractiveBackground'
+import { AnimatePresence, motion } from 'framer-motion'
 
 const navLinks = [
   { href: '/courses', label: 'Курсы' },
+  { href: '/schedule', label: 'Расписание' },
   { href: '/teachers', label: 'Педагоги' },
   { href: '/news', label: 'Новости' },
   { href: '/contact', label: 'Контакты' },
@@ -15,6 +20,7 @@ export default function PublicLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { isAuthenticated, user, logout, isAdmin } = useAuthStore()
+  const { theme, toggleTheme } = useThemeStore()
   const location = useLocation()
 
   useEffect(() => {
@@ -26,27 +32,23 @@ export default function PublicLayout() {
   useEffect(() => setMenuOpen(false), [location])
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0f1e]">
-      {/* Navbar */}
+    <div className="min-h-screen flex flex-col bg-surface light:bg-white transition-colors duration-300 relative">
+      <InteractiveBackground />
       <header className={clsx(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        scrolled ? 'glass shadow-card' : 'bg-transparent'
+        scrolled ? 'glass shadow-card light:bg-white/80 light:backdrop-blur-xl light:border-b light:border-slate-200 light:shadow-sm' : 'bg-transparent'
       )}>
         <div className="container-page">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-primary-gradient flex items-center justify-center shadow-glow group-hover:scale-110 transition-transform">
-                <Rocket className="w-5 h-5 text-white" />
-              </div>
+              <img src={logoImg} alt="Детский Технопарк" className="h-10 w-auto group-hover:scale-110 transition-transform" />
               <div>
-                <div className="text-white font-bold text-base font-display leading-none">Технопарк</div>
+                <div className="text-content-main light:text-slate-900 font-bold text-base font-display leading-none">Технопарк</div>
                 <div className="text-primary-400 text-[10px] font-medium leading-none">Детский</div>
               </div>
             </Link>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -54,8 +56,8 @@ export default function PublicLayout() {
                   className={clsx(
                     'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200',
                     location.pathname.startsWith(link.href)
-                      ? 'text-white bg-primary-600/20 border border-primary-500/30'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                      ? 'text-white bg-primary-600/20 border border-primary-500/30 light:text-primary-700 light:bg-primary-50 light:border-primary-200'
+                      : 'text-content-muted hover:text-white hover:bg-slate-800/60 light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100'
                   )}
                 >
                   {link.label}
@@ -63,20 +65,31 @@ export default function PublicLayout() {
               ))}
             </nav>
 
-            {/* Auth Actions */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-3">
+              <button
+                onClick={toggleTheme}
+                className="btn btn-ghost btn-icon"
+                title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+              >
+                {theme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+              </button>
+
               {isAuthenticated ? (
                 <>
                   {isAdmin && (
                     <Link to="/admin" className="btn-ghost btn text-xs">
-                      Админ
+                      Админ-панель
                     </Link>
                   )}
-                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-800 transition-colors">
-                    <div className="w-7 h-7 rounded-full bg-primary-gradient flex items-center justify-center text-white text-xs font-bold">
-                      {user?.name?.[0]?.toUpperCase()}
-                    </div>
-                    <span className="text-slate-300 text-sm">{user?.name}</span>
+                  <Link to="/profile" className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-800 light:hover:bg-slate-100 transition-colors">
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-primary-gradient flex items-center justify-center text-content-main text-xs font-bold">
+                        {user?.name?.[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-content-muted light:text-slate-700 text-sm">{user?.name}</span>
                   </Link>
                   <button onClick={logout} className="btn btn-secondary btn-sm">Выйти</button>
                 </>
@@ -90,32 +103,56 @@ export default function PublicLayout() {
               )}
             </div>
 
-            {/* Mobile burger */}
-            <button
-              className="md:hidden btn btn-ghost btn-icon"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
-              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+            <div className="flex lg:hidden items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="btn btn-ghost btn-icon"
+                title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+              >
+                {theme === 'dark' ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+              </button>
+              <button
+                className="lg:hidden btn btn-ghost btn-icon"
+                onClick={() => setMenuOpen(!menuOpen)}
+              >
+                {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Mobile Menu */}
         {menuOpen && (
-          <div className="md:hidden glass border-t border-surface-border animate-slide-up">
+          <div className="lg:hidden glass border-t border-surface-border animate-slide-up light:bg-white/95 light:border-slate-200">
             <div className="container-page py-4 flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium"
+                  className="px-4 py-3 rounded-xl text-content-muted hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100"
                 >
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-2 border-t border-surface-border flex gap-2">
+              {isAdmin && (
+                <Link to="/admin" className="px-4 py-3 rounded-xl text-content-muted hover:text-white hover:bg-slate-800 transition-colors text-sm font-medium light:text-slate-600 light:hover:text-slate-900 light:hover:bg-slate-100">
+                  Админ-панель
+                </Link>
+              )}
+              <div className="pt-2 border-t border-surface-border light:border-slate-200 flex gap-2">
                 {isAuthenticated ? (
-                  <button onClick={logout} className="btn btn-secondary flex-1 btn-sm">Выйти</button>
+                  <>
+                    <Link to="/profile" className="flex items-center gap-2 flex-1 px-3 py-2 rounded-xl hover:bg-slate-800 light:hover:bg-slate-100 transition-colors">
+                      {user?.avatar_url ? (
+                        <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-primary-gradient flex items-center justify-center text-content-main text-xs font-bold">
+                          {user?.name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-content-muted light:text-slate-700 text-sm">{user?.name}</span>
+                    </Link>
+                    <button onClick={logout} className="btn btn-secondary btn-sm">Выйти</button>
+                  </>
                 ) : (
                   <>
                     <Link to="/login" className="btn btn-secondary flex-1 btn-sm">Войти</Link>
@@ -128,24 +165,29 @@ export default function PublicLayout() {
         )}
       </header>
 
-      {/* Page Content */}
       <main className="flex-1 pt-16">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-surface-border mt-20">
+      <footer className="border-t border-surface-border light:border-slate-200 mt-20">
         <div className="container-page py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Brand */}
             <div className="md:col-span-2">
               <Link to="/" className="flex items-center gap-2.5 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-primary-gradient flex items-center justify-center">
-                  <Rocket className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-white font-bold font-display">Детский Технопарк</span>
+                <img src={logoImg} alt="Детский Технопарк" className="h-10 w-auto" />
+                <span className="text-content-main light:text-slate-900 font-bold font-display">Детский Технопарк</span>
               </Link>
-              <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
+              <p className="text-content-muted light:text-content-muted text-sm leading-relaxed max-w-xs">
                 Инновационные образовательные курсы для детей: робототехника, программирование, 3D-моделирование, электроника.
               </p>
               <div className="flex gap-3 mt-4">
@@ -158,30 +200,33 @@ export default function PublicLayout() {
               </div>
             </div>
 
-            {/* Links */}
             <div>
-              <h4 className="text-white font-semibold mb-3 text-sm">Обучение</h4>
+              <h4 className="text-content-main light:text-slate-900 font-semibold mb-3 text-sm">Обучение</h4>
               <ul className="space-y-2">
-                {[['Курсы', '/courses'], ['Педагоги', '/teachers'], ['Расписание', '/courses']].map(([label, href]) => (
+                {[
+                  ['Курсы', '/courses'],
+                  ['Педагоги', '/teachers'],
+                  ['Расписание', '/schedule'],
+                  ['Документы', '/documents']
+                ].map(([label, href]) => (
                   <li key={label}>
-                    <Link to={href} className="text-slate-400 hover:text-primary-400 text-sm transition-colors">{label}</Link>
+                    <Link to={href} className="text-content-muted hover:text-primary-400 text-sm transition-colors light:text-content-muted light:hover:text-primary-600">{label}</Link>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Contact */}
             <div>
-              <h4 className="text-white font-semibold mb-3 text-sm">Контакты</h4>
-              <ul className="space-y-2 text-sm text-slate-400">
+              <h4 className="text-content-main light:text-slate-900 font-semibold mb-3 text-sm">Контакты</h4>
+              <ul className="space-y-2 text-sm text-content-muted light:text-content-muted">
                 <li>г. Владимирская область, г. Гусь-Хрустальный, ул. Писарева, д. 17</li>
                 <li>+7 (996) 442-96-24</li>
                 <li>test@mail.ru</li>
-                <li>Пн–Пт: 8:00–18:00\nСб: 8:00–14:00</li>
+                <li>Пн–Пт: 8:00–18:00 <br />Сб: 8:00–14:00</li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-surface-border mt-8 pt-6 text-center text-slate-500 text-xs">
+          <div className="border-t border-surface-border light:border-slate-200 mt-8 pt-6 text-center text-content-muted text-xs">
             © {new Date().getFullYear()} Детский Технопарк. Все права защищены.
           </div>
         </div>

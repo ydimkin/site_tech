@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Clock, Users, Star, ChevronRight, BookOpen } from 'lucide-react'
 import type { Course } from '@/types'
+import { markdownToPlain } from '@/utils/markdown'
 
 interface Props {
   course: Course
@@ -21,7 +22,6 @@ export default function CourseCard({ course }: Props) {
 
   return (
     <Link to={`/courses/${course.id}`} className="card-hover group flex flex-col overflow-hidden">
-      {/* Image / Gradient */}
       <div className="relative h-48 overflow-hidden">
         {course.image_url ? (
           <img
@@ -31,11 +31,10 @@ export default function CourseCard({ course }: Props) {
           />
         ) : (
           <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center`}>
-            <BookOpen className="w-14 h-14 text-white/30" />
+            <BookOpen className="w-14 h-14 text-content-main/30" />
           </div>
         )}
 
-        {/* Price badge */}
         <div className="absolute top-3 right-3">
           {course.price > 0 ? (
             <span className="badge-primary badge font-semibold">
@@ -46,33 +45,29 @@ export default function CourseCard({ course }: Props) {
           )}
         </div>
 
-        {/* Featured badge */}
         {course.is_featured && (
           <div className="absolute top-3 left-3">
-            <span className="badge-accent badge">⭐ Топ</span>
+            <span className="badge-accent badge">Топ</span>
           </div>
         )}
       </div>
 
-      {/* Content */}
       <div className="flex flex-col flex-1 p-5">
-        {/* Category */}
         {course.category && (
           <span className="text-primary-400 text-xs font-medium mb-2">{course.category.name}</span>
         )}
 
-        <h3 className="text-white font-semibold text-base mb-2 group-hover:text-primary-300 transition-colors line-clamp-2">
+        <h3 className="text-content-main font-semibold text-base mb-2 group-hover:text-primary-300 transition-colors line-clamp-2">
           {course.title}
         </h3>
 
         {course.description && (
-          <p className="text-slate-400 text-sm line-clamp-2 mb-4 flex-1">
-            {course.description}
+          <p className="text-content-muted text-sm line-clamp-2 mb-4 flex-1">
+            {markdownToPlain(course.description)}
           </p>
         )}
 
-        {/* Meta */}
-        <div className="flex items-center gap-4 text-xs text-slate-500 mb-4">
+        <div className="flex items-center gap-4 text-xs text-content-muted mb-4">
           <div className="flex items-center gap-1">
             <Users className="w-3.5 h-3.5" />
             <span>{course.age_min}–{course.age_max} лет</span>
@@ -85,14 +80,13 @@ export default function CourseCard({ course }: Props) {
           )}
         </div>
 
-        {/* Teacher & CTA */}
         <div className="flex items-center justify-between mt-auto pt-4 border-t border-surface-border">
           {course.teacher && (
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-primary-gradient flex items-center justify-center text-white text-xs font-bold">
+              <div className="w-7 h-7 rounded-full bg-primary-gradient flex items-center justify-center text-content-main text-xs font-bold">
                 {course.teacher.name[0]}
               </div>
-              <span className="text-slate-400 text-xs">{course.teacher.name}</span>
+              <span className="text-content-muted text-xs">{course.teacher.name}</span>
             </div>
           )}
           <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-primary-400 group-hover:translate-x-0.5 transition-all ml-auto" />

@@ -16,7 +16,6 @@ func NewBookingService(db *gorm.DB) *BookingService {
 }
 
 func (s *BookingService) Create(userID, groupID uint, childName string, childAge int, phone, comment string) (*models.Booking, error) {
-	// Check group capacity
 	var group models.Group
 	if err := s.db.First(&group, groupID).Error; err != nil {
 		return nil, errors.New("group not found")
@@ -30,7 +29,6 @@ func (s *BookingService) Create(userID, groupID uint, childName string, childAge
 		s.db.Model(&group).UpdateColumn("current_students", gorm.Expr("current_students + 1"))
 	}
 
-	// Check if already booked
 	var existing models.Booking
 	if err := s.db.Where("user_id = ? AND group_id = ? AND status != ?",
 		userID, groupID, models.BookingCancelled).First(&existing).Error; err == nil {
@@ -79,7 +77,6 @@ func (s *BookingService) Cancel(id, userID uint) error {
 	if b.Status == models.BookingCancelled {
 		return errors.New("already cancelled")
 	}
-	// Decrement group students
 	if b.Status != models.BookingWaitlist {
 		s.db.Model(&models.Group{}).Where("id = ?", b.GroupID).
 			UpdateColumn("current_students", gorm.Expr("current_students - 1"))

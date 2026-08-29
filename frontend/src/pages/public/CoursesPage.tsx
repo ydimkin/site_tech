@@ -4,6 +4,7 @@ import { coursesApi } from '@/api/courses'
 import { categoriesApi } from '@/api/misc'
 import type { Course, Category, CourseFilters } from '@/types'
 import CourseCard from '@/components/common/CourseCard'
+import { FadeIn, Stagger, StaggerItem } from '@/components/common/Animated'
 
 const AGE_OPTIONS = [
   { label: 'Любой возраст', value: 0 },
@@ -63,18 +64,16 @@ export default function CoursesPage() {
 
   return (
     <div className="container-page py-12">
-      {/* Header */}
-      <div className="mb-10">
+      <FadeIn className="mb-10">
         <h1 className="section-title mb-2">Каталог курсов</h1>
-        <p className="text-slate-400">
+        <p className="text-content-muted">
           {total > 0 ? `Найдено ${total} курс${total % 10 === 1 && total !== 11 ? '' : total % 10 < 5 && (total % 100 < 10 || total % 100 >= 20) ? 'а' : 'ов'}` : 'Загрузка...'}
         </p>
-      </div>
+      </FadeIn>
 
-      {/* Search + Filter toggle */}
       <div className="flex gap-3 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input
             type="text"
             placeholder="Поиск курсов..."
@@ -98,10 +97,8 @@ export default function CoursesPage() {
         )}
       </div>
 
-      {/* Filter panel */}
       {showFilters && (
         <div className="card p-5 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-slide-up">
-          {/* Category */}
           <div>
             <label className="label">Направление</label>
             <select
@@ -116,7 +113,6 @@ export default function CoursesPage() {
             </select>
           </div>
 
-          {/* Age */}
           <div>
             <label className="label">Возраст ребёнка</label>
             <select
@@ -130,7 +126,6 @@ export default function CoursesPage() {
             </select>
           </div>
 
-          {/* Price */}
           <div>
             <label className="label">Макс. цена (₽/мес)</label>
             <input
@@ -144,7 +139,6 @@ export default function CoursesPage() {
         </div>
       )}
 
-      {/* Course grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} />)}
@@ -152,17 +146,20 @@ export default function CoursesPage() {
       ) : courses.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">🔍</div>
-          <h3 className="text-white font-semibold text-xl mb-2">Курсы не найдены</h3>
-          <p className="text-slate-400 mb-6">Попробуйте изменить параметры поиска</p>
+          <h3 className="text-content-main font-semibold text-xl mb-2">Курсы не найдены</h3>
+          <p className="text-content-muted mb-6">Попробуйте изменить параметры поиска</p>
           <button onClick={clearFilters} className="btn btn-primary">Сбросить фильтры</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => <CourseCard key={course.id} course={course} />)}
-        </div>
+        <Stagger className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" whileInView={false}>
+          {courses.map((course) => (
+            <StaggerItem key={course.id}>
+              <CourseCard course={course} />
+            </StaggerItem>
+          ))}
+        </Stagger>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-10">
           <button

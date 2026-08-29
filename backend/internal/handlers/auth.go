@@ -69,9 +69,10 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 }
 
 type updateProfileInput struct {
-	Name     string `json:"name"`
-	Phone    string `json:"phone"`
-	ChildAge *int   `json:"child_age"`
+	Name      string `json:"name"`
+	Phone     string `json:"phone"`
+	ChildAge  *int   `json:"child_age"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 func (h *AuthHandler) UpdateMe(c *gin.Context) {
@@ -81,7 +82,7 @@ func (h *AuthHandler) UpdateMe(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	user, err := h.authService.UpdateProfile(userID, input.Name, input.Phone, input.ChildAge)
+	user, err := h.authService.UpdateProfile(userID, input.Name, input.Phone, input.ChildAge, input.AvatarURL)
 	if err != nil {
 		response.BadRequest(c, err.Error())
 		return
@@ -89,7 +90,16 @@ func (h *AuthHandler) UpdateMe(c *gin.Context) {
 	response.OK(c, user)
 }
 
-// Admin: list all users
+func (h *AuthHandler) DeleteAvatar(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	user, err := h.authService.DeleteAvatar(userID)
+	if err != nil {
+		response.InternalError(c)
+		return
+	}
+	response.OK(c, user)
+}
+
 func (h *AuthHandler) ListUsers(c *gin.Context) {
 	users, err := h.authService.ListUsers()
 	if err != nil {
@@ -99,7 +109,6 @@ func (h *AuthHandler) ListUsers(c *gin.Context) {
 	response.OK(c, users)
 }
 
-// Admin: toggle user active
 func (h *AuthHandler) ToggleUserActive(c *gin.Context) {
 	id := c.Param("id")
 	user, err := h.authService.ToggleActive(id)
@@ -110,7 +119,6 @@ func (h *AuthHandler) ToggleUserActive(c *gin.Context) {
 	response.OK(c, user)
 }
 
-// Admin: change user role
 type changeRoleInput struct {
 	Role models.Role `json:"role" binding:"required"`
 }

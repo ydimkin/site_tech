@@ -61,8 +61,8 @@ func (h *CourseHandler) GetByID(c *gin.Context) {
 type createCourseInput struct {
 	Title       string  `json:"title" binding:"required"`
 	Description string  `json:"description"`
-	CategoryID  uint    `json:"category_id" binding:"required"`
-	TeacherID   uint    `json:"teacher_id" binding:"required"`
+	CategoryID  uint    `json:"category_id"`
+	TeacherID   uint    `json:"teacher_id"`
 	AgeMin      int     `json:"age_min"`
 	AgeMax      int     `json:"age_max"`
 	Price       float64 `json:"price"`
@@ -77,6 +77,16 @@ func (h *CourseHandler) Create(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
+	
+	if input.CategoryID == 0 {
+		response.BadRequest(c, "Пожалуйста, выберите категорию")
+		return
+	}
+	if input.TeacherID == 0 {
+		response.BadRequest(c, "Пожалуйста, выберите педагога")
+		return
+	}
+
 	course, err := h.svc.Create(input.Title, input.Description, input.CategoryID, input.TeacherID,
 		input.AgeMin, input.AgeMax, input.Price, input.Duration, input.ImageURL, input.IsFeatured)
 	if err != nil {
@@ -97,6 +107,16 @@ func (h *CourseHandler) Update(c *gin.Context) {
 		response.BadRequest(c, err.Error())
 		return
 	}
+
+	if input.CategoryID == 0 {
+		response.BadRequest(c, "Пожалуйста, выберите категорию")
+		return
+	}
+	if input.TeacherID == 0 {
+		response.BadRequest(c, "Пожалуйста, выберите педагога")
+		return
+	}
+
 	course, err := h.svc.Update(uint(id), input.Title, input.Description, input.CategoryID, input.TeacherID,
 		input.AgeMin, input.AgeMax, input.Price, input.Duration, input.ImageURL, input.IsFeatured)
 	if err != nil {
@@ -119,7 +139,6 @@ func (h *CourseHandler) Delete(c *gin.Context) {
 	response.OKMessage(c, "Course deleted")
 }
 
-// GetFeatured returns featured courses for home page
 func (h *CourseHandler) GetFeatured(c *gin.Context) {
 	courses, err := h.svc.GetFeatured()
 	if err != nil {

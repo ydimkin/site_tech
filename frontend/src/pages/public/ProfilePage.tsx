@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { bookingsApi } from '@/api/bookings'
 import { authApi } from '@/api/auth'
 import type { Booking } from '@/types'
 import toast from 'react-hot-toast'
-import { User, BookOpen, Phone, CalendarCheck, Clock } from 'lucide-react'
+import { User, BookOpen, Phone, CalendarCheck, Clock, Camera, Trash2 } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'На рассмотрении',
@@ -26,6 +26,33 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false)
   const [form, setForm] = useState({ name: user?.name || '', phone: user?.phone || '', child_age: user?.child_age?.toString() || '' })
+
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const res = await authApi.uploadAvatar(file)
+      const url = res.data.data.url
+      const updated = await authApi.updateMe({ avatar_url: url } as any)
+      setUser(updated.data.data!)
+      toast.success('Фото обновлено')
+    } catch {
+      toast.error('Ошибка загрузки')
+    }
+  }
+
+  const handleDeleteAvatar = async () => {
+    if (!confirm('Удалить фото профиля?')) return
+    try {
+      const res = await authApi.deleteAvatar()
+      setUser(res.data.data!)
+      toast.success('Фото удалено')
+    } catch {
+      toast.error('Ошибка удаления')
+    }
+  }
 
   useEffect(() => {
     bookingsApi.myBookings().then((r) => {
@@ -64,15 +91,33 @@ export default function ProfilePage() {
       <h1 className="section-title mb-8">Личный кабинет</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile card */}
         <div className="card p-6 h-fit">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-primary-gradient flex items-center justify-center text-white text-2xl font-bold">
-              {user?.name?.[0]?.toUpperCase()}
+            <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="avatar" className="w-16 h-16 rounded-2xl object-cover" />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-primary-gradient flex items-center justify-center text-content-main text-2xl font-bold">
+                  {user?.name?.[0]?.toUpperCase()}
+                </div>
+              )}
+              <div className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
+            {user?.avatar_url && (
+              <button
+                onClick={handleDeleteAvatar}
+                className="text-red-400 hover:text-red-300 transition-colors p-1"
+                title="Удалить фото"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <div>
-              <h2 className="text-white font-bold text-lg">{user?.name}</h2>
-              <p className="text-slate-400 text-sm">{user?.email}</p>
+              <h2 className="text-content-main font-bold text-lg">{user?.name}</h2>
+              <p className="text-content-muted text-sm">{user?.email}</p>
               <span className={`badge mt-1 ${user?.role === 'admin' ? 'badge-accent' : user?.role === 'teacher' ? 'badge-primary' : 'badge-muted'}`}>
                 {user?.role === 'admin' ? 'Администратор' : user?.role === 'teacher' ? 'Педагог' : 'Ученик'}
               </span>
@@ -81,10 +126,10 @@ export default function ProfilePage() {
 
           {!editMode ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-slate-400">
+              <div className="flex items-center gap-2 text-sm text-content-muted">
                 <Phone className="w-4 h-4" /> {user?.phone || 'Не указан'}
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-400">
+              <div className="flex items-center gap-2 text-sm text-content-muted">
                 <User className="w-4 h-4" /> Возраст ребёнка: {user?.child_age || 'Не указан'}
               </div>
               <button className="btn btn-secondary w-full mt-4" onClick={() => setEditMode(true)}>
@@ -113,9 +158,8 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Bookings */}
         <div className="lg:col-span-2">
-          <h2 className="text-white font-semibold text-xl mb-5 flex items-center gap-2">
+          <h2 className="text-content-main font-semibold text-xl mb-5 flex items-center gap-2">
             <CalendarCheck className="w-5 h-5 text-primary-400" /> Мои бронирования
           </h2>
 
@@ -126,8 +170,8 @@ export default function ProfilePage() {
           ) : bookings.length === 0 ? (
             <div className="card p-10 text-center">
               <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h3 className="text-white font-semibold mb-2">Нет бронирований</h3>
-              <p className="text-slate-400 text-sm mb-4">Запишитесь на любой понравившийся курс</p>
+              <h3 className="text-content-main font-semibold mb-2">Нет бронирований</h3>
+              <p className="text-content-muted text-sm mb-4">Запишитесь на любой понравившийся курс</p>
               <a href="/courses" className="btn btn-primary">Выбрать курс</a>
             </div>
           ) : (
@@ -136,10 +180,10 @@ export default function ProfilePage() {
                 <div key={booking.id} className="card p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="text-white font-semibold">
+                      <h3 className="text-content-main font-semibold">
                         {booking.group?.course?.title || 'Курс'}
                       </h3>
-                      <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-400">
+                      <div className="flex flex-wrap gap-3 mt-2 text-sm text-content-muted">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5" /> {booking.child_name}, {booking.child_age} лет
                         </span>
@@ -149,7 +193,7 @@ export default function ProfilePage() {
                             {booking.group.schedule.weekday} {booking.group.schedule.time_start}
                           </span>
                         )}
-                        <span className="text-slate-500 text-xs">
+                        <span className="text-content-muted text-xs">
                           {new Date(booking.created_at).toLocaleDateString('ru-RU')}
                         </span>
                       </div>

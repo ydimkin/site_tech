@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware'
 
+const SESSION_LIFETIME_DAYS = Number(import.meta.env.VITE_SESSION_LIFETIME_DAYS) || 2
+
 const cookieStorage: StateStorage = {
   getItem: (name: string): string | null => {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
@@ -8,7 +10,7 @@ const cookieStorage: StateStorage = {
   },
   setItem: (name: string, value: string): void => {
     const expires = new Date()
-    expires.setTime(expires.getTime() + 7 * 24 * 60 * 60 * 1000) // 1 week
+    expires.setTime(expires.getTime() + SESSION_LIFETIME_DAYS * 24 * 60 * 60 * 1000)
     document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Lax`
   },
   removeItem: (name: string): void => {
@@ -66,6 +68,13 @@ export const useAuthStore = create<AuthState>()(
       name: 'technopark-auth',
       storage: createJSONStorage(() => cookieStorage),
       partialize: (state) => ({ token: state.token, user: state.user }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.token && state.user) {
+          state.isAuthenticated = true
+          state.isAdmin = state.user.role === 'admin'
+          state.isTeacher = state.user.role === 'teacher' || state.user.role === 'admin'
+        }
+      },
     }
   )
 )

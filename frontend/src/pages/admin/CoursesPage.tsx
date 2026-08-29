@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { coursesApi } from '@/api/courses'
-import { categoriesApi, teachersApi } from '@/api/misc'
+import { categoriesApi, teachersApi, uploadApi } from '@/api/misc'
 import type { Course, Category, Teacher } from '@/types'
 import toast from 'react-hot-toast'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Upload } from 'lucide-react'
+import MarkdownEditor from '@/components/common/MarkdownEditor'
+import Modal from '@/components/common/Modal'
 
 type FormState = {
   title: string; description: string; category_id: string; teacher_id: string;
@@ -23,6 +25,19 @@ export default function AdminCoursesPage() {
   const [editing, setEditing] = useState<Course | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [loading, setLoading] = useState(true)
+  const imgRef = useRef<HTMLInputElement>(null)
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const res = await uploadApi.upload(file)
+      setForm((p) => ({ ...p, image_url: res.data.data.url }))
+      toast.success('Изображение загружено')
+    } catch {
+      toast.error('Ошибка загрузки')
+    }
+  }
 
   const fetch = async () => {
     setLoading(true)
@@ -49,6 +64,10 @@ export default function AdminCoursesPage() {
   }
 
   const handleSubmit = async () => {
+    if (!form.category_id || !form.teacher_id) {
+      toast.error('Необходимо выбрать категорию и педагога')
+      return
+    }
     const payload = {
       title: form.title, description: form.description, category_id: Number(form.category_id),
       teacher_id: Number(form.teacher_id), age_min: Number(form.age_min), age_max: Number(form.age_max),
@@ -76,19 +95,19 @@ export default function AdminCoursesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white font-display">Курсы</h1>
-        <button className="btn btn-primary" onClick={openCreate}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-2xl font-bold text-content-main font-display">Курсы</h1>
+        <button className="btn btn-primary w-full sm:w-auto" onClick={openCreate}>
           <Plus className="w-4 h-4" /> Добавить курс
         </button>
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto hidden md:block">
+        <table className="w-full text-sm min-w-[700px]">
           <thead>
             <tr className="border-b border-surface-border">
               {['Курс', 'Категория', 'Педагог', 'Возраст', 'Цена', 'Статус', ''].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-slate-400 font-medium">{h}</th>
+                <th key={h} className="text-left px-4 py-3 text-content-muted font-medium">{h}</th>
               ))}
             </tr>
           </thead>
@@ -104,13 +123,13 @@ export default function AdminCoursesPage() {
             ) : courses.map((c) => (
               <tr key={c.id} className="border-b border-surface-border hover:bg-surface/40 transition-colors">
                 <td className="px-4 py-3">
-                  <div className="text-slate-200 font-medium">{c.title}</div>
+                  <div className="text-content-main font-medium">{c.title}</div>
                   {c.is_featured && <span className="badge-accent badge text-[10px]">Топ</span>}
                 </td>
-                <td className="px-4 py-3 text-slate-400">{c.category?.name || '—'}</td>
-                <td className="px-4 py-3 text-slate-400">{c.teacher?.name || '—'}</td>
-                <td className="px-4 py-3 text-slate-400">{c.age_min}–{c.age_max} лет</td>
-                <td className="px-4 py-3 text-slate-300">{c.price.toLocaleString('ru-RU')} ₽</td>
+                <td className="px-4 py-3 text-content-muted">{c.category?.name || '—'}</td>
+                <td className="px-4 py-3 text-content-muted">{c.teacher?.name || '—'}</td>
+                <td className="px-4 py-3 text-content-muted">{c.age_min}–{c.age_max} лет</td>
+                <td className="px-4 py-3 text-content-muted">{c.price.toLocaleString('ru-RU')} ₽</td>
                 <td className="px-4 py-3">
                   <span className={c.is_active ? 'badge-success badge' : 'badge-danger badge'}>
                     {c.is_active ? 'Активен' : 'Скрыт'}
@@ -132,13 +151,47 @@ export default function AdminCoursesPage() {
         </table>
       </div>
 
-      {/* Modal */}
+      <div className="space-y-3 md:hidden">
+        {loading ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-32 rounded-xl" />) :
+          courses.map((c) => (
+            <div key={c.id} className="card p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-content-main font-medium">{c.title}</div>
+                  <div className="text-content-muted text-xs mt-0.5">
+                    {c.category?.name || '—'} · {c.age_min}–{c.age_max} лет
+                  </div>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  {c.is_featured && <span className="badge-accent badge text-[10px]">Топ</span>}
+                  <span className={`badge text-[10px] ${c.is_active ? 'badge-success' : 'badge-danger'}`}>
+                    {c.is_active ? 'Активен' : 'Скрыт'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-surface-border">
+                <div className="text-xs text-content-muted truncate">
+                  {c.teacher?.name || '—'} · {c.price > 0 ? `${c.price.toLocaleString('ru-RU')} ₽` : 'Бесплатно'}
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(c)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button className="btn btn-danger btn-icon btn-sm" onClick={() => handleDelete(c.id)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setModal(false)} />
-          <div className="card relative w-full max-w-lg p-6 z-10 animate-slide-up max-h-[90vh] overflow-y-auto">
+        <Modal onClose={() => setModal(false)}>
+          <div className="card relative w-full max-w-2xl p-4 sm:p-6 z-10 animate-slide-up max-h-[95dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-white font-bold text-lg">{editing ? 'Редактировать курс' : 'Новый курс'}</h3>
+              <h3 className="text-content-main font-bold text-lg">{editing ? 'Редактировать курс' : 'Новый курс'}</h3>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setModal(false)}><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-4">
@@ -147,10 +200,15 @@ export default function AdminCoursesPage() {
                 <input className="input" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
               </div>
               <div>
-                <label className="label">Описание</label>
-                <textarea className="input resize-none" rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+                <label className="label">Описание (поддерживает Markdown — можно вставлять фото в любое место)</label>
+                <MarkdownEditor
+                  value={form.description}
+                  onChange={(description) => setForm((p) => ({ ...p, description }))}
+                  rows={8}
+                  placeholder="## О курсе&#10;&#10;Опишите программу курса. Используйте **жирный** текст и *курсив*.&#10;&#10;Вставляйте фото прямо в описание с помощью кнопки 'Фото'."
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Категория</label>
                   <select className="select" value={form.category_id} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
@@ -166,7 +224,7 @@ export default function AdminCoursesPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Возраст от</label>
                   <input className="input" type="number" value={form.age_min} onChange={(e) => setForm((p) => ({ ...p, age_min: e.target.value }))} />
@@ -187,12 +245,20 @@ export default function AdminCoursesPage() {
                 </div>
               </div>
               <div>
-                <label className="label">URL изображения</label>
-                <input className="input" placeholder="https://..." value={form.image_url} onChange={(e) => setForm((p) => ({ ...p, image_url: e.target.value }))} />
+                <label className="label">Изображение</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {form.image_url && <img src={form.image_url} alt="" className="w-16 h-16 rounded-lg object-cover" />}
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => imgRef.current?.click()}>
+                    <Upload className="w-4 h-4" /> Загрузить
+                  </button>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => setForm((p) => ({ ...p, image_url: '' }))}>Очистить
+                  </button>
+                  <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </div>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_featured} onChange={(e) => setForm((p) => ({ ...p, is_featured: e.target.checked }))} className="w-4 h-4 accent-blue-500" />
-                <span className="text-slate-300 text-sm">Отметить как популярный (на главной)</span>
+                <span className="text-content-muted text-sm">Отобразить на главной странице</span>
               </label>
             </div>
             <div className="flex gap-3 mt-6">
@@ -200,7 +266,7 @@ export default function AdminCoursesPage() {
               <button className="btn btn-primary flex-1" onClick={handleSubmit}>{editing ? 'Сохранить' : 'Создать'}</button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

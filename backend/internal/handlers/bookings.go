@@ -64,7 +64,6 @@ func (h *BookingHandler) GetByID(c *gin.Context) {
 		response.NotFound(c, "Booking not found")
 		return
 	}
-	// Only owner or admin can view
 	if booking.UserID != userID && role != string(models.RoleAdmin) {
 		response.Forbidden(c)
 		return
@@ -86,7 +85,6 @@ func (h *BookingHandler) Cancel(c *gin.Context) {
 	response.OKMessage(c, "Booking cancelled")
 }
 
-// Admin handlers
 func (h *BookingHandler) AdminList(c *gin.Context) {
 	status := c.Query("status")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

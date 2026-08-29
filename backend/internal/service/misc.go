@@ -4,10 +4,10 @@ import (
 	"time"
 	"technopark/internal/models"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// NewsService
 type NewsService struct{ db *gorm.DB }
 
 func NewNewsService(db *gorm.DB) *NewsService { return &NewsService{db: db} }
@@ -27,18 +27,21 @@ func (s *NewsService) GetByID(id uint) (*models.News, error) {
 	return &n, err
 }
 
-func (s *NewsService) Create(title, content, preview, imageURL string, published bool) (*models.News, error) {
+func (s *NewsService) Create(title, content, preview, imageURL string, images []string, published bool) (*models.News, error) {
 	var pubAt *time.Time
 	if published {
 		now := time.Now()
 		pubAt = &now
 	}
-	n := models.News{Title: title, Content: content, Preview: preview, ImageURL: imageURL, IsPublished: published, PublishedAt: pubAt}
+	if images == nil {
+		images = []string{}
+	}
+	n := models.News{Title: title, Content: content, Preview: preview, ImageURL: imageURL, Images: images, IsPublished: published, PublishedAt: pubAt}
 	err := s.db.Create(&n).Error
 	return &n, err
 }
 
-func (s *NewsService) Update(id uint, title, content, preview, imageURL string, published bool) (*models.News, error) {
+func (s *NewsService) Update(id uint, title, content, preview, imageURL string, images []string, published bool) (*models.News, error) {
 	var n models.News
 	if err := s.db.First(&n, id).Error; err != nil {
 		return nil, err
@@ -47,6 +50,10 @@ func (s *NewsService) Update(id uint, title, content, preview, imageURL string, 
 	n.Content = content
 	n.Preview = preview
 	n.ImageURL = imageURL
+	if images == nil {
+		images = []string{}
+	}
+	n.Images = images
 	n.IsPublished = published
 	if published && n.PublishedAt == nil {
 		now := time.Now()
@@ -58,7 +65,7 @@ func (s *NewsService) Update(id uint, title, content, preview, imageURL string, 
 
 func (s *NewsService) Delete(id uint) error { return s.db.Delete(&models.News{}, id).Error }
 
-// TeacherService
+
 type TeacherService struct{ db *gorm.DB }
 
 func NewTeacherService(db *gorm.DB) *TeacherService { return &TeacherService{db: db} }
@@ -69,10 +76,36 @@ func (s *TeacherService) List() ([]models.Teacher, error) {
 	return teachers, err
 }
 
-func (s *TeacherService) Create(name, position, desc, photo string, exp int, subjects string) (*models.Teacher, error) {
-	t := models.Teacher{Name: name, Position: position, Description: desc, PhotoURL: photo, Experience: exp, Subjects: subjects}
-	err := s.db.Create(&t).Error
-	return &t, err
+func (s *TeacherService) Create(name, position, desc, photo string, exp int, subjects, email, password string) (*models.Teacher, error) {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		t := models.Teacher{Name: name, Position: position, Description: desc, PhotoURL: photo, Experience: exp, Subjects: subjects}
+		if err := tx.Create(&t).Error; err != nil {
+			return err
+		}
+		if email != "" && password != "" {
+			hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			if err != nil {
+				return err
+			}
+			user := models.User{
+				Name:         name,
+				Email:        email,
+				PasswordHash: string(hashed),
+				Role:         models.RoleTeacher,
+				IsActive:     true,
+			}
+			if err := tx.Create(&user).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	var t models.Teacher
+	s.db.Where("name = ? AND position = ?", name, position).Order("id desc").First(&t)
+	return &t, nil
 }
 
 func (s *TeacherService) Update(id uint, name, position, desc, photo string, exp int, subjects string) (*models.Teacher, error) {
@@ -92,7 +125,7 @@ func (s *TeacherService) Update(id uint, name, position, desc, photo string, exp
 
 func (s *TeacherService) Delete(id uint) error { return s.db.Delete(&models.Teacher{}, id).Error }
 
-// CategoryService
+
 type CategoryService struct{ db *gorm.DB }
 
 func NewCategoryService(db *gorm.DB) *CategoryService { return &CategoryService{db: db} }
@@ -123,7 +156,6 @@ func (s *CategoryService) Update(id uint, name, icon, color string) (*models.Cat
 
 func (s *CategoryService) Delete(id uint) error { return s.db.Delete(&models.Category{}, id).Error }
 
-// ContactService
 type ContactService struct{ db *gorm.DB }
 
 func NewContactService(db *gorm.DB) *ContactService { return &ContactService{db: db} }
@@ -144,7 +176,10 @@ func (s *ContactService) MarkRead(id uint) error {
 	return s.db.Model(&models.ContactMessage{}).Where("id = ?", id).Update("is_read", true).Error
 }
 
-// ReviewService
+func (s *ContactService) Delete(id uint) error {
+	return s.db.Delete(&models.ContactMessage{}, id).Error
+}
+
 type ReviewService struct{ db *gorm.DB }
 
 func NewReviewService(db *gorm.DB) *ReviewService { return &ReviewService{db: db} }
@@ -161,7 +196,93 @@ func (s *ReviewService) Create(userID, courseID uint, rating int, text string) (
 	return &r, err
 }
 
-// StatsService
+type DocumentService struct{ db *gorm.DB }
+
+func NewDocumentService(db *gorm.DB) *DocumentService { return &DocumentService{db: db} }
+
+func (s *DocumentService) List() ([]models.Document, error) {
+	var docs []models.Document
+	err := s.db.Order("created_at desc").Find(&docs).Error
+	return docs, err
+}
+
+func (s *DocumentService) Create(title, fileURL, category string) (*models.Document, error) {
+	d := models.Document{Title: title, FileURL: fileURL, Category: category}
+	err := s.db.Create(&d).Error
+	return &d, err
+}
+
+func (s *DocumentService) Delete(id uint) error {
+	return s.db.Delete(&models.Document{}, id).Error
+}
+
+
+type ScheduleService struct{ db *gorm.DB }
+
+func NewScheduleService(db *gorm.DB) *ScheduleService { return &ScheduleService{db: db} }
+
+func (s *ScheduleService) List() ([]models.Schedule, error) {
+	var schedules []models.Schedule
+	err := s.db.Preload("Course").Preload("Course.Category").Preload("Course.Teacher").
+		Where("course_id IN (SELECT id FROM courses WHERE is_active = ? AND deleted_at IS NULL)", true).
+		Order("weekday, time_start").Find(&schedules).Error
+	return schedules, err
+}
+
+func (s *ScheduleService) AdminList() ([]models.Schedule, error) {
+	var schedules []models.Schedule
+	err := s.db.Preload("Course").Order("weekday, time_start").Find(&schedules).Error
+	return schedules, err
+}
+
+func (s *ScheduleService) Create(courseID uint, weekday, timeStart, timeEnd string, capacity int) (*models.Schedule, error) {
+	sch := models.Schedule{CourseID: courseID, Weekday: weekday, TimeStart: timeStart, TimeEnd: timeEnd, Capacity: capacity}
+	if err := s.db.Create(&sch).Error; err != nil {
+		return nil, err
+	}
+	
+	now := time.Now()
+	grp := models.Group{
+		CourseID:   courseID,
+		ScheduleID: sch.ID,
+		StartDate:  now,
+		EndDate:    now.AddDate(1, 0, 0),
+		Capacity:   capacity,
+		IsActive:   true,
+	}
+	s.db.Create(&grp)
+	
+	s.db.Preload("Course").First(&sch, sch.ID)
+	return &sch, nil
+}
+
+func (s *ScheduleService) Update(id uint, courseID uint, weekday, timeStart, timeEnd string, capacity int) (*models.Schedule, error) {
+	var sch models.Schedule
+	if err := s.db.First(&sch, id).Error; err != nil {
+		return nil, err
+	}
+	sch.CourseID = courseID
+	sch.Weekday = weekday
+	sch.TimeStart = timeStart
+	sch.TimeEnd = timeEnd
+	sch.Capacity = capacity
+	s.db.Save(&sch)
+	
+	var grp models.Group
+	if err := s.db.Where("schedule_id = ?", sch.ID).First(&grp).Error; err == nil {
+		grp.Capacity = capacity
+		s.db.Save(&grp)
+	}
+	
+	s.db.Preload("Course").First(&sch, sch.ID)
+	return &sch, nil
+}
+
+func (s *ScheduleService) Delete(id uint) error {
+	return s.db.Delete(&models.Schedule{}, id).Error
+}
+
+
 type StatsService struct{ db *gorm.DB }
 
 func NewStatsService(db *gorm.DB) *StatsService { return &StatsService{db: db} }
@@ -194,7 +315,6 @@ func (s *StatsService) GetStats() (*DashboardStats, error) {
 	s.db.Model(&models.Booking{}).Where("status = ?", models.BookingPending).Count(&stats.PendingBookings)
 	s.db.Model(&models.News{}).Count(&stats.TotalNews)
 
-	// Monthly bookings for last 6 months
 	s.db.Raw(`
 		SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as count
 		FROM bookings
@@ -202,7 +322,6 @@ func (s *StatsService) GetStats() (*DashboardStats, error) {
 		GROUP BY month ORDER BY month
 	`).Scan(&stats.MonthlyBookings)
 
-	// Top courses
 	s.db.Raw(`
 		SELECT c.title as course_title, COUNT(b.id) as bookings
 		FROM bookings b

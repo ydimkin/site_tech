@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { newsApi } from '@/api/misc'
 import type { News } from '@/types'
+import { FadeIn, Stagger, StaggerItem } from '@/components/common/Animated'
 
 export default function NewsPage() {
   const [news, setNews] = useState<News[]>([])
@@ -19,8 +20,10 @@ export default function NewsPage() {
 
   return (
     <div className="container-page py-12">
-      <h1 className="section-title mb-2">Новости</h1>
-      <p className="section-subtitle mb-10">Последние события технопарка</p>
+      <FadeIn>
+        <h1 className="section-title mb-2">Новости</h1>
+        <p className="section-subtitle mb-10">Последние события технопарка</p>
+      </FadeIn>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -36,26 +39,28 @@ export default function NewsPage() {
           ))}
         </div>
       ) : news.length === 0 ? (
-        <div className="text-center py-20 text-slate-400">Новостей пока нет</div>
+        <div className="text-center py-20 text-content-muted">Новостей пока нет</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Stagger className="grid grid-cols-1 md:grid-cols-3 gap-6" whileInView={false}>
           {news.map((item) => (
-            <Link key={item.id} to={`/news/${item.id}`} className="card-hover group overflow-hidden">
-              <div className="h-52 overflow-hidden bg-primary-gradient/20">
-                {item.image_url && (
-                  <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                )}
-              </div>
-              <div className="p-5">
-                <p className="text-slate-500 text-xs mb-2">
-                  {item.published_at ? new Date(item.published_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
-                </p>
-                <h2 className="text-white font-semibold leading-snug group-hover:text-primary-300 transition-colors">{item.title}</h2>
-                {item.preview && <p className="text-slate-400 text-sm mt-2 line-clamp-3">{item.preview}</p>}
-              </div>
-            </Link>
+            <StaggerItem key={item.id}>
+              <Link to={`/news/${item.id}`} className="card-hover group overflow-hidden block">
+                <div className="h-52 overflow-hidden bg-primary-gradient/20">
+                  {item.image_url && (
+                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  )}
+                </div>
+                <div className="p-5">
+                  <p className="text-content-muted text-xs mb-2">
+                    {item.published_at ? new Date(item.published_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                  </p>
+                  <h2 className="text-content-main font-semibold leading-snug group-hover:text-primary-300 transition-colors">{item.title}</h2>
+                  {item.preview && <p className="text-content-muted text-sm mt-2 line-clamp-3">{item.preview}</p>}
+                </div>
+              </Link>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
       {totalPages > 1 && (

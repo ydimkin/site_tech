@@ -1,6 +1,8 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -14,8 +16,15 @@ const (
 	RoleStudent Role = "student"
 )
 
+type BaseModel struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
 type User struct {
-	gorm.Model
+	BaseModel
 	Name         string  `gorm:"not null" json:"name"`
 	Email        string  `gorm:"uniqueIndex;not null" json:"email"`
 	PasswordHash string  `gorm:"not null" json:"-"`
@@ -29,7 +38,7 @@ type User struct {
 }
 
 type Category struct {
-	gorm.Model
+	BaseModel
 	Name    string   `gorm:"uniqueIndex;not null" json:"name"`
 	Icon    string   `json:"icon"`
 	Color   string   `json:"color"`
@@ -37,7 +46,7 @@ type Category struct {
 }
 
 type Teacher struct {
-	gorm.Model
+	BaseModel
 	Name        string `gorm:"not null" json:"name"`
 	Position    string `json:"position"`
 	Description string `json:"description"`
@@ -48,7 +57,7 @@ type Teacher struct {
 }
 
 type Course struct {
-	gorm.Model
+	BaseModel
 	Title       string   `gorm:"not null" json:"title"`
 	Description string   `gorm:"type:text" json:"description"`
 	CategoryID  uint     `json:"category_id"`
@@ -58,16 +67,16 @@ type Course struct {
 	AgeMin      int      `json:"age_min"`
 	AgeMax      int      `json:"age_max"`
 	Price       float64  `json:"price"`
-	Duration    int      `json:"duration"` // months
+	Duration    int      `json:"duration"`
 	ImageURL    string   `json:"image_url"`
 	IsActive    bool     `gorm:"default:true" json:"is_active"`
 	IsFeatured  bool     `gorm:"default:false" json:"is_featured"`
-	Groups      []Group  `gorm:"foreignKey:CourseID" json:"-"`
+	Groups      []Group  `gorm:"foreignKey:CourseID" json:"groups"`
 	Reviews     []Review `gorm:"foreignKey:CourseID" json:"-"`
 }
 
 type Schedule struct {
-	gorm.Model
+	BaseModel
 	CourseID  uint   `json:"course_id"`
 	Course    Course `gorm:"foreignKey:CourseID" json:"course"`
 	Weekday   string `json:"weekday"`
@@ -77,7 +86,7 @@ type Schedule struct {
 }
 
 type Group struct {
-	gorm.Model
+	BaseModel
 	CourseID        uint      `json:"course_id"`
 	Course          Course    `gorm:"foreignKey:CourseID" json:"course"`
 	ScheduleID      uint      `json:"schedule_id"`
@@ -100,7 +109,7 @@ const (
 )
 
 type Booking struct {
-	gorm.Model
+	BaseModel
 	UserID      uint          `json:"user_id"`
 	User        User          `gorm:"foreignKey:UserID" json:"user"`
 	GroupID     uint          `json:"group_id"`
@@ -112,20 +121,8 @@ type Booking struct {
 	Comment     string        `json:"comment"`
 }
 
-type TrialBooking struct {
-	gorm.Model
-	CourseID    uint          `json:"course_id"`
-	Course      Course        `gorm:"foreignKey:CourseID" json:"course"`
-	ChildName   string        `json:"child_name"`
-	ChildAge    int           `json:"child_age"`
-	ParentName  string        `json:"parent_name"`
-	ParentPhone string        `json:"parent_phone"`
-	Status      BookingStatus `gorm:"default:'pending'" json:"status"`
-	PreferDate  string        `json:"prefer_date"`
-}
-
 type Review struct {
-	gorm.Model
+	BaseModel
 	UserID   uint   `json:"user_id"`
 	User     User   `gorm:"foreignKey:UserID" json:"user"`
 	CourseID uint   `json:"course_id"`
@@ -135,32 +132,46 @@ type Review struct {
 }
 
 type News struct {
-	gorm.Model
-	Title       string    `gorm:"not null" json:"title"`
-	Content     string    `gorm:"type:text" json:"content"`
-	Preview     string    `gorm:"type:text" json:"preview"`
-	ImageURL    string    `json:"image_url"`
-	IsPublished bool      `gorm:"default:false" json:"is_published"`
-	PublishedAt *time.Time `json:"published_at"`
+	BaseModel
+	Title       string         `gorm:"not null" json:"title"`
+	Content     string         `gorm:"type:text" json:"content"`
+	Preview     string         `gorm:"type:text" json:"preview"`
+	ImageURL    string         `json:"image_url"`
+	Images      StringArray    `gorm:"type:jsonb;default:'[]'" json:"images"`
+	IsPublished bool           `gorm:"default:false" json:"is_published"`
+	PublishedAt *time.Time     `json:"published_at"`
 }
 
-type GalleryItem struct {
-	gorm.Model
-	ImageURL    string `json:"image_url"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	SortOrder   int    `gorm:"default:0" json:"sort_order"`
+type StringArray []string
+
+func (a *StringArray) Scan(value interface{}) error {
+	if value == nil {
+		*a = StringArray{}
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(bytes, a)
+}
+
+func (a StringArray) Value() (driver.Value, error) {
+	if a == nil {
+		return "[]", nil
+	}
+	return json.Marshal(a)
 }
 
 type Document struct {
-	gorm.Model
+	BaseModel
 	Title    string `json:"title"`
 	FileURL  string `json:"file_url"`
-	Category string `json:"category"` // license, certificate, charter
+	Category string `json:"category"`
 }
 
 type ContactMessage struct {
-	gorm.Model
+	BaseModel
 	Name    string `json:"name"`
 	Email   string `json:"email"`
 	Phone   string `json:"phone"`

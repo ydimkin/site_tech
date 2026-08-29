@@ -1,5 +1,15 @@
 import client from './client'
-import type { News, Teacher, Category, ContactMessage, DashboardStats, PaginatedResponse } from '@/types'
+import type { News, Teacher, Category, Schedule, ContactMessage, DashboardStats, PaginatedResponse, Document } from '@/types'
+
+export const uploadApi = {
+  upload: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return client.post<{ success: boolean; data: { url: string } }>('/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+}
 
 export const newsApi = {
   list: (page = 1, pageSize = 9) =>
@@ -52,6 +62,25 @@ export const contactApi = {
 
   markRead: (id: number) =>
     client.put(`/admin/contacts/${id}/read`),
+
+  delete: (id: number) =>
+    client.delete(`/admin/contacts/${id}`),
+}
+
+export const scheduleApi = {
+  list: () =>
+    client.get<{ success: boolean; data: Schedule[] }>('/schedules'),
+
+  adminList: () =>
+    client.get<{ success: boolean; data: Schedule[] }>('/schedules/admin'),
+
+  create: (data: { course_id: number; weekday: string; time_start: string; time_end: string; capacity: number }) =>
+    client.post<{ success: boolean; data: Schedule }>('/schedules', data),
+
+  update: (id: number, data: { course_id: number; weekday: string; time_start: string; time_end: string; capacity: number }) =>
+    client.put<{ success: boolean; data: Schedule }>(`/schedules/${id}`, data),
+
+  delete: (id: number) => client.delete(`/schedules/${id}`),
 }
 
 export const adminApi = {
@@ -67,3 +96,15 @@ export const adminApi = {
   changeRole: (id: number, role: string) =>
     client.put(`/admin/users/${id}/role`, { role }),
 }
+
+export const documentsApi = {
+  list: () =>
+    client.get<{ success: boolean; data: Document[] }>('/documents'),
+
+  create: (data: { title: string; file_url: string; category: string }) =>
+    client.post<{ success: boolean; data: Document }>('/admin/documents', data),
+
+  delete: (id: number) =>
+    client.delete(`/admin/documents/${id}`),
+}
+

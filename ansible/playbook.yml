@@ -1,0 +1,190 @@
+---
+
+- name: Развернуть site_tech ({{ env | default('dev') }})
+  hosts: all
+  gather_facts: true
+  vars:
+    env: dev
+    remote_project_dir: "{{ '/root/site_tech' if inventory_hostname != 'localhost' else (playbook_dir | dirname) }}"
+    project_dir: "{{ remote_project_dir }}"
+    env_file: "{{ project_dir }}/.env"
+    compose_files:
+      - "{{ project_dir }}/docker-compose.yml"
+      - "{{ project_dir }}/docker-compose.{{ env }}.yml"
+    project_name: "site_tech_{{ env }}"
+    health_url: "{{ 'http://localhost:8080/health' if env != 'deploy' else 'https://' + (DOMAIN | default('localhost')) + '/health' }}"
+    rebuild: false
+
+  pre_tasks:
+    - name: Проверить, что профиль валиден
+      ansible.builtin.assert:
+        that:
+          - env in ['dev', 'prod', 'deploy']
+        fail_msg: "env должен быть 'dev', 'prod' или 'deploy', получено: {{ env }}"
+
+    - name: Проверить, что .env существует локально на компьютере
+      ansible.builtin.stat:
+        path: "{{ playbook_dir | dirname }}/.env"
+      register: env_file_stat
+      delegate_to: localhost
+      run_once: true
+
+    - name: Прервать если локального .env нет
+      ansible.builtin.fail:
+        msg: |
+          Файл .env не найден в корне проекта на вашем компьютере.
+          Пожалуйста, скопируйте .env.example в .env и заполните его перед деплоем.
+      when: not env_file_stat.stat.exists
+      delegate_to: localhost
+      run_once: true
+
+    - name: Получить DOMAIN из локального .env файла
+      ansible.builtin.shell:
+        cmd: grep -E "^DOMAIN=" "{{ playbook_dir | dirname }}/.env" | cut -d'=' -f2 | tr -d '"' | tr -d "'"
+      register: domain_grep
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+      run_once: true
+      when: env_file_stat.stat.exists
+
+    - name: Установить DOMAIN в качестве факта
+      ansible.builtin.set_fact:
+        DOMAIN: "{{ domain_grep.stdout | trim }}"
+      when: env_file_stat.stat.exists and domain_grep.rc == 0 and domain_grep.stdout | trim != ''
+
+  tasks:
+    - name: Проверить наличие docker
+      ansible.builtin.command: docker --version
+      register: docker_check
+      changed_when: false
+      failed_when: docker_check.rc != 0
+
+    - name: Проверить наличие docker compose
+      ansible.builtin.command: docker compose version
+      register: compose_check
+      changed_when: false
+      failed_when: compose_check.rc != 0
+
+    - name: Показать версии docker / compose
+      ansible.builtin.debug:
+        msg:
+          - "Docker: {{ docker_check.stdout }}"
+          - "Compose: {{ compose_check.stdout }}"
+          - "Profile: {{ env }}"
+          - "Env file: {{ env_file }}"
+          - "Project: {{ project_name }}"
+
+    - name: Установить rsync на удаленном сервере (требуется для синхронизации)
+      ansible.builtin.package:
+        name: rsync
+        state: present
+      when: inventory_hostname != 'localhost'
+
+    - name: Создать каталог проекта на удаленном VPS
+      ansible.builtin.file:
+        path: "{{ project_dir }}"
+        state: directory
+        mode: "0755"
+      when: inventory_hostname != 'localhost'
+
+    - name: Синхронизировать файлы проекта на удаленный сервер
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir | dirname }}/"
+        dest: "{{ project_dir }}/"
+        recursive: yes
+        delete: yes
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=.git"
+          - "--exclude=db_data"
+          - "--exclude=.DS_Store"
+          - "--exclude=.env"
+          - "--exclude=backend/tmp"
+          - "--exclude=deploy"
+      when: inventory_hostname != 'localhost'
+
+    - name: Копировать файл .env на удаленный сервер
+      ansible.builtin.copy:
+        src: "{{ playbook_dir | dirname }}/.env"
+        dest: "{{ project_dir }}/.env"
+        mode: "0600"
+      when: inventory_hostname != 'localhost'
+
+    - name: Создать внешнюю сеть Docker 'web' (если используется deploy)
+      ansible.builtin.command: docker network create web
+      register: network_create
+      failed_when: false
+      changed_when: "'Error' not in network_create.stderr and 'already exists' not in network_create.stderr"
+      when: env == 'deploy'
+
+    - name: Создать каталоги для данных
+      ansible.builtin.file:
+        path: "{{ project_dir }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - db_data
+        - uploads
+
+    - name: Сборка образов
+      ansible.builtin.command:
+        cmd: >
+          docker compose
+          --project-name {{ project_name }}
+          --env-file {{ env_file }}
+          {% for f in compose_files %}-f {{ f }} {% endfor %}
+          build
+          {% if rebuild | bool %}--no-cache{% endif %}
+        chdir: "{{ project_dir }}"
+      register: build_out
+      changed_when: "'Building' in build_out.stdout or 'naming to' in build_out.stderr"
+
+    - name: Запуск контейнеров (detached)
+      ansible.builtin.command:
+        cmd: >
+          docker compose
+          --project-name {{ project_name }}
+          --env-file {{ env_file }}
+          {% for f in compose_files %}-f {{ f }} {% endfor %}
+          up -d --remove-orphans
+        chdir: "{{ project_dir }}"
+      register: up_out
+      changed_when: "'Started' in up_out.stderr or 'Created' in up_out.stderr or 'Recreated' in up_out.stderr"
+
+    - name: Очистить кэш сборщика и неиспользуемые образы Docker
+      ansible.builtin.command:
+        cmd: "{{ item }}"
+      loop:
+        - docker builder prune -a -f
+        - docker image prune -f
+      changed_when: false
+
+    - name: Подождать пока бэкенд ответит на /health
+      ansible.builtin.uri:
+        url: "{{ health_url }}"
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 30
+      delay: 2
+
+    - name: Список запущенных контейнеров
+      ansible.builtin.command:
+        cmd: >
+          docker compose
+          --project-name {{ project_name }}
+          --env-file {{ env_file }}
+          {% for f in compose_files %}-f {{ f }} {% endfor %}
+          ps
+        chdir: "{{ project_dir }}"
+      register: ps_out
+      changed_when: false
+
+    - name: Готово
+      ansible.builtin.debug:
+        msg:
+          - "✓ site_tech ({{ env }}) запущен"
+          - "Backend:  http://localhost:8080"
+          - "Frontend: http://localhost:{{ '5173' if env == 'dev' else '80' }}"
+          - "{{ ps_out.stdout }}"

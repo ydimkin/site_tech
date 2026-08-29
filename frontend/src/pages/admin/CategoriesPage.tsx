@@ -3,6 +3,7 @@ import { categoriesApi } from '@/api/misc'
 import type { Category } from '@/types'
 import toast from 'react-hot-toast'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import Modal from '@/components/common/Modal'
 
 const PRESET_COLORS = ['#3b82f6', '#7c3aed', '#f97316', '#22c55e', '#ef4444', '#06b6d4', '#ec4899', '#f59e0b']
 
@@ -37,23 +38,23 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white font-display">Категории</h1>
-        <button className="btn btn-primary" onClick={() => { setEditing(null); setForm(emptyForm); setModal(true) }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-2xl font-bold text-content-main font-display">Категории</h1>
+        <button className="btn btn-primary w-full sm:w-auto" onClick={() => { setEditing(null); setForm(emptyForm); setModal(true) }}>
           <Plus className="w-4 h-4" /> Добавить
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {cats.map((c) => (
-          <div key={c.id} className="card p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl" style={{ background: c.color + '30' }}>
+          <div key={c.id} className="card p-3 sm:p-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: c.color + '30' }}>
                 {c.icon || '📚'}
               </div>
-              <span className="text-white text-sm font-medium">{c.name}</span>
+              <span className="text-content-main text-sm font-medium truncate">{c.name}</span>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-shrink-0">
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(c)}><Pencil className="w-3.5 h-3.5" /></button>
               <button className="btn btn-danger btn-icon btn-sm" onClick={() => handleDelete(c.id)}><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
@@ -62,11 +63,10 @@ export default function AdminCategoriesPage() {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setModal(false)} />
-          <div className="card relative w-full max-w-sm p-6 z-10 animate-slide-up">
+        <Modal onClose={() => setModal(false)}>
+          <div className="card relative w-full max-w-sm p-4 sm:p-6 z-10 animate-slide-up max-h-[95dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between mb-5">
-              <h3 className="text-white font-bold text-lg">{editing ? 'Изменить' : 'Новая категория'}</h3>
+              <h3 className="text-content-main font-bold text-lg">{editing ? 'Изменить' : 'Новая категория'}</h3>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setModal(false)}><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-4">
@@ -97,7 +97,7 @@ export default function AdminCategoriesPage() {
               <button className="btn btn-primary flex-1" onClick={handleSubmit}>{editing ? 'Сохранить' : 'Создать'}</button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

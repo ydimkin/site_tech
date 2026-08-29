@@ -1,4 +1,6 @@
 main
+tmp/
+build-errors.log
 *.exe
 *.exe~
 *.dll
@@ -7,6 +9,7 @@ main
 *.test
 *.out
 .env
+.env.*
 .git
 .idea
 .vscode

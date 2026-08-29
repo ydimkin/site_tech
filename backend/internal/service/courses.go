@@ -61,8 +61,11 @@ func (s *CourseService) List(filter CourseFilter, page, pageSize int) ([]models.
 func (s *CourseService) GetByID(id uint) (*models.Course, error) {
 	var course models.Course
 	err := s.db.Preload("Category").Preload("Teacher").
-		Preload("Groups").Preload("Groups.Schedule").
+		Preload("Groups", "is_active = ?", true).Preload("Groups.Schedule").
 		First(&course, id).Error
+	if course.Groups == nil {
+		course.Groups = []models.Group{}
+	}
 	return &course, err
 }
 

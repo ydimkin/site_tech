@@ -9,11 +9,13 @@ import (
 )
 
 type Config struct {
-	AppPort  string
-	AppEnv   string
-	Database DatabaseConfig
-	JWT      JWTConfig
-	CORS     CORSConfig
+	AppPort             string
+	AppEnv              string
+	Domain              string
+	SessionLifetimeDays int
+	Database            DatabaseConfig
+	JWT                 JWTConfig
+	CORS                CORSConfig
 }
 
 type DatabaseConfig struct {
@@ -47,8 +49,10 @@ func Load() *Config {
 	}
 
 	return &Config{
-		AppPort: getEnv("APP_PORT", "8080"),
-		AppEnv:  getEnv("APP_ENV", "development"),
+		AppPort:             getEnv("APP_PORT", "8080"),
+		AppEnv:              getEnv("APP_ENV", "development"),
+		Domain:              getEnv("DOMAIN", "localhost"),
+		SessionLifetimeDays: getEnvInt("SESSION_LIFETIME_DAYS", 2),
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),
@@ -59,7 +63,7 @@ func Load() *Config {
 		},
 		JWT: JWTConfig{
 			Secret:      getEnv("JWT_SECRET", "secret"),
-			ExpiresHours: 24,
+			ExpiresHours: getEnvInt("JWT_EXPIRES_HOURS", 168),
 		},
 		CORS: CORSConfig{
 			Origins: getEnv("CORS_ORIGINS", "http://localhost:5173"),
@@ -70,6 +74,16 @@ func Load() *Config {
 func getEnv(key, fallback string) string {
 	if val, ok := os.LookupEnv(key); ok {
 		return val
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if val, ok := os.LookupEnv(key); ok {
+		var i int
+		if _, err := fmt.Sscanf(val, "%d", &i); err == nil {
+			return i
+		}
 	}
 	return fallback
 }

@@ -1,0 +1,13 @@
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  children:
+    prod_servers:
+      hosts:
+        my-server:
+          ansible_host: IP_VPS
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_site_tech

@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    image: site_tech-backend:dev
+    container_name: site_tech-backend-dev
+    environment:
+      - APP_ENV=development
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080
+    ports:
+      - "${PORT_BACKEND:-8080}:8080"
+    volumes:
+      - ./backend:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    image: site_tech-frontend:dev
+    container_name: site_tech-frontend-dev
+    ports:
+      - "${PORT_FRONTEND:-5173}:5173"
+    environment:
+      - VITE_API_PROXY_TARGET=http://backend:8080
+      - VITE_SESSION_LIFETIME_DAYS=${SESSION_LIFETIME_DAYS}
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+
+  db:
+    container_name: site_tech-db-dev
+    ports:
+      - "${PORT_DB:-5432}:5432"
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  frontend-node-modules:
